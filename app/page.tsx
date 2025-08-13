@@ -1,103 +1,150 @@
-import Image from "next/image";
+'use client';
+
+import { useState, useEffect } from 'react';
+import { UploadZone } from '@/components/upload-zone';
+import { SiteList, Site } from '@/components/site-list';
+import { MarkdownPreview } from '@/components/markdown-preview';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 export default function Home() {
-  return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
+  const [sites, setSites] = useState<Site[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [uploadStatus, setUploadStatus] = useState<{ type: 'success' | 'error', message: string } | null>(null);
+  const [previewContent, setPreviewContent] = useState<string>('');
 
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+  useEffect(() => {
+    fetchSites();
+  }, []);
+
+  const fetchSites = async () => {
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/sites/list');
+      const data = await response.json();
+      if (data.success) {
+        setSites(data.sites);
+      }
+    } catch (error) {
+      console.error('Failed to fetch sites:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFileSelect = async (file: File, siteName: string) => {
+    setUploadStatus(null);
+    
+    // Read file for preview
+    const content = await file.text();
+    setPreviewContent(content);
+    
+    // Upload file
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('siteName', siteName);
+
+    try {
+      const response = await fetch('/api/sites/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await response.json();
+      
+      if (response.ok) {
+        setUploadStatus({
+          type: 'success',
+          message: `Site published successfully at ${data.url}`,
+        });
+        fetchSites(); // Refresh the list
+      } else {
+        setUploadStatus({
+          type: 'error',
+          message: data.error || 'Failed to upload site',
+        });
+      }
+    } catch (error) {
+      setUploadStatus({
+        type: 'error',
+        message: 'Failed to upload site. Please try again.',
+      });
+    }
+  };
+
+  const handleDelete = async (siteName: string) => {
+    try {
+      const response = await fetch(`/api/sites/delete?siteName=${siteName}`, {
+        method: 'DELETE',
+      });
+
+      if (response.ok) {
+        fetchSites(); // Refresh the list
+      }
+    } catch (error) {
+      console.error('Failed to delete site:', error);
+    }
+  };
+
+  return (
+    <div className="min-h-screen p-8">
+      <div className="max-w-6xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-bold mb-4">Markdown Site Hosting</h1>
+          <p className="text-gray-600 dark:text-gray-400">
+            Upload your markdown files and host them instantly as websites
+          </p>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {uploadStatus && (
+          <div
+            className={`mb-6 p-4 rounded-lg text-center ${
+              uploadStatus.type === 'success'
+                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
+                : 'bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400'
+            }`}
+          >
+            {uploadStatus.message}
+          </div>
+        )}
+
+        <Tabs defaultValue="upload" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="upload">Upload</TabsTrigger>
+            <TabsTrigger value="preview">Preview</TabsTrigger>
+            <TabsTrigger value="sites">My Sites</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="upload" className="mt-6">
+            <UploadZone onFileSelect={handleFileSelect} />
+          </TabsContent>
+
+          <TabsContent value="preview" className="mt-6">
+            <div className="max-w-4xl mx-auto p-6 bg-white dark:bg-gray-800 rounded-lg">
+              {previewContent ? (
+                <>
+                  <h2 className="text-xl font-semibold mb-4">Markdown Preview</h2>
+                  <div className="border dark:border-gray-700 rounded-lg p-6">
+                    <MarkdownPreview content={previewContent} />
+                  </div>
+                </>
+              ) : (
+                <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                  Upload a markdown file to see preview
+                </div>
+              )}
+            </div>
+          </TabsContent>
+
+          <TabsContent value="sites" className="mt-6">
+            <SiteList
+              sites={sites}
+              onDelete={handleDelete}
+              onRefresh={fetchSites}
+              isLoading={isLoading}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }

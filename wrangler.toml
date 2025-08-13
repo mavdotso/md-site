@@ -1,0 +1,28 @@
+name = "md-site"
+main = "cloudflare-worker/index.js"
+compatibility_date = "2024-01-01"
+
+# Development/preview configuration (default)
+[[r2_buckets]]
+binding = "SITES_BUCKET"
+bucket_name = "md-site"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "d089eb523afd4625a02ebc72ef3f9cee"
+
+# Production environment configuration
+[env.production]
+routes = [{ pattern = "*.markdownsite.xyz", zone_name = "markdownsite.xyz" }]
+
+[[env.production.r2_buckets]]
+binding = "SITES_BUCKET"
+bucket_name = "md-site"
+
+[[env.production.kv_namespaces]]
+binding = "CACHE"
+id = "d089eb523afd4625a02ebc72ef3f9cee"
+
+# Development environment configuration
+[env.development]
+vars = { ENVIRONMENT = "development" }
